@@ -1,0 +1,61 @@
+version: "3.3"
+
+networks:
+  # docker internal network
+  lampnet:
+    driver: bridge
+
+services:
+
+  # LAMP Server from image
+  app:
+    image: lamp-dev:0.1
+    container_name: drupalwebapp    
+    env_file:
+      - .env
+    #working_dir: /var/www/html/
+    ports:
+        - 8080:80    
+        - 8081:443
+        - 3306:3306        
+    volumes:
+      - ../www:/var/www/html/
+    networks:
+      - lampnet          
+    tty: true
+
+  # Database (mysql)
+  db:
+    image: mysql:5.7
+    container_name: drupalwebapp-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+    #  - ./docker-compose/mysql:/docker-entrypoint-initdb.d
+       - ./lamp-dev/setup-mysql:/docker-entrypoint-initdb.d
+    networks:
+      - lampnet
+      
+  # PhpMyAdmin
+  phpmyadmin:
+    image: corbinu/docker-phpmyadmin
+    container_name: drupalwebapp-phpmyadmin
+    ports:
+      - 8181:80
+    #env_file:
+    #  - ./docker-compose/mysql/phpmyadmin.env
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      MYSQL_PORT_3306_TCP_ADDR: db
+      MYSQL_USERNAME: root
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    networks:
+      - lampnet
